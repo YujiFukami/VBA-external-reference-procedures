@@ -224,7 +224,7 @@ Function 全プロシージャ一覧作成(VBProjectList)
 End Function
 Sub プロシージャ内の使用プロシージャ取得(VBProjectList() As classVBProject, AllProcedureList)
     
-    Dim I&, J&, II&, JJ&, K&, M&, N& '数え上げ用(Long型)
+    Dim I&, J&, II&, JJ&, III&, K&, M&, N& '数え上げ用(Long型)
     N = UBound(AllProcedureList, 1)
     'プロシージャの個数を計算
     Dim TmpClassVBProject As classVBProject
@@ -235,6 +235,8 @@ Sub プロシージャ内の使用プロシージャ取得(VBProjectList() As classVBProject, AllP
     Dim TmpVBProjectName$, TmpModuleName$, TmpProcedureName$
     Dim TmpSiyosakiList As Object
     Dim TmpSiyoProcedure As ClassProcedure
+    Dim TmpSiyoProcedureList() As ClassProcedure
+    Dim NaibuSansyoNaraTrue As Boolean
     
     For I = 1 To UBound(VBProjectList, 1)
         Set TmpClassVBProject = VBProjectList(I)
@@ -244,6 +246,7 @@ Sub プロシージャ内の使用プロシージャ取得(VBProjectList() As classVBProject, AllP
                 Set TmpClassProcedure = TmpClassModule.Procedures(II)
                 Set TmpKensakuCode = TmpClassProcedure.KensakuCode
                 K = 0
+                ReDim TmpSiyoProcedureList(1 To 1)
                 For JJ = 1 To N
                     TmpVBProjectName = AllProcedureList(JJ, 1)
                     TmpModuleName = AllProcedureList(JJ, 2)
@@ -262,11 +265,55 @@ Sub プロシージャ内の使用プロシージャ取得(VBProjectList() As classVBProject, AllP
                             TmpModuleNum = AllProcedureList(JJ, 5)
                             TmpProcedureNum = AllProcedureList(JJ, 6)
                             Set TmpSiyoProcedure = VBProjectList(TmpVBProjectNum).Modules(TmpModuleNum).Procedures(TmpProcedureNum)
+                            
                             TmpClassProcedure.AddUseProcedure TmpSiyoProcedure
+                            K = K + 1
+                            ReDim Preserve TmpSiyoProcedureList(1 To K)
+                            Set TmpSiyoProcedureList(K) = TmpSiyoProcedure
+                            
+'                            Debug.Assert TmpSiyoProcedure.Name <> "OutputText"
                             
                         End If
                     End If
                 Next JJ
+                
+                '外部参照しているが、内部でも同じ名前で参照しているときは除外する
+                If K = 0 Then
+                    '使用プロシージャなし・・・何もしない
+                ElseIf K = 1 Then
+                    '使用プロシージャ1つ・・・そのまま使用先で格納
+                    TmpClassProcedure.AddUseProcedure TmpSiyoProcedureList(1)
+                Else '使用プロシージャが2つ以上
+                    For JJ = 1 To K
+                        Set TmpSiyoProcedure = TmpSiyoProcedureList(JJ)
+                        TmpVBProjectName = TmpSiyoProcedure.VBProjectName
+                        TmpProcedureName = TmpSiyoProcedure.Name
+                        
+                        If TmpVBProjectName = TmpClassVBProject.Name Then
+                            '内部参照(使用プロシージャのVBProject名が自身のVBProject名と一致している)
+                            TmpClassProcedure.AddUseProcedure TmpSiyoProcedure
+                        Else
+                            '外部参照(使用プロシージャのVBProject名が自身のVBProject名と一致していない)
+                            
+                            '内部参照がすでにしてあるか判定
+                            NaibuSansyoNaraTrue = False
+                            For III = 1 To K
+                                If JJ <> III Then
+                                    If TmpProcedureName = TmpSiyoProcedureList(III).Name And _
+                                       TmpClassVBProject.Name = TmpSiyoProcedureList(III).VBProjectName Then
+                                        '内部参照済み
+                                        NaibuSansyoNaraTrue = True
+                                        Exit For
+                                    End If
+                                End If
+                            Next III
+                            
+                            If NaibuSansyoNaraTrue = False Then
+                                TmpClassProcedure.AddUseProcedure TmpSiyoProcedure
+                            End If
+                        End If
+                    Next JJ
+                End If
             Next II
         Next J
     Next
