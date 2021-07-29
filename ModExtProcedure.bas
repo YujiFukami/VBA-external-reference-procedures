@@ -3,6 +3,12 @@ Option Explicit
 '外部参照プロシージャの取得用モジュール
 'frmExtRefと連携している
 
+Function Gaibu()
+    '外部参照プロシージャ一覧表示フォーム起動
+    Gaibu = "外部参照"
+    Call frmExtRef.Show
+    
+End Function
 Function フォーム用VBProject作成()
     
     Dim I%, J%, II%, K%, M%, N% '数え上げ用(Integer型)
