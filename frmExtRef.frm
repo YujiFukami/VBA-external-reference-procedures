@@ -6,6 +6,7 @@ Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frmExtRef
    ClientTop       =   456
    ClientWidth     =   10560
    OleObjectBlob   =   "frmExtRef.frx":0000
+   ShowModal       =   0   'False
    StartUpPosition =   1  'オーナー フォームの中央
 End
 Attribute VB_Name = "frmExtRef"

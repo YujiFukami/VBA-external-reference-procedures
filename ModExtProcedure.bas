@@ -358,15 +358,31 @@ Sub プロシージャ内の外部参照プロシージャ取得(MyVBProjectName$, ClassProcedure As
     
     Dim I&, J&, K&, M&, N& '数え上げ用(Long型)
     Dim TmpUseProcedure As ClassProcedure
+    Dim TmpUseProcedure2 As ClassProcedure
+    Dim GaibuSansyoNaraTrue As Boolean
+    
     If ClassProcedure.UseProcedure.Count = 0 Then
         '使用しているプロシージャ無しの場合何もしない
     Else
         For I = 1 To ClassProcedure.UseProcedure.Count
             Set TmpUseProcedure = ClassProcedure.UseProcedure(I)
+            
+            '再帰(使用プロシージャ内の外部参照を探る)
             Call プロシージャ内の外部参照プロシージャ取得(MyVBProjectName, TmpUseProcedure, ExtProcedureDict)
             
             If TmpUseProcedure.VBProjectName <> MyVBProjectName Then 'VBProject名が異なれば外部参照
-                If ExtProcedureDict.Exists(TmpUseProcedure.Name) = False Then
+                
+                '既に自分のVBProject内に同じ名前のプロシージャが存在すれば、外部参照でない
+                GaibuSansyoNaraTrue = True
+                For J = 1 To ClassProcedure.UseProcedure.Count
+                    Set TmpUseProcedure2 = ClassProcedure.UseProcedure(J)
+                    If TmpUseProcedure2.MyVBProjectName = MyVBProjectName And TmpUseProcedure2.Name = TmpUseProcedure.Name Then
+                        GaibuSansyoNaraTrue = False
+                        Exit For
+                    End If
+                Next J
+                
+                If GaibuSansyoNaraTrue = True And ExtProcedureDict.Exists(TmpUseProcedure.Name) = False Then
                     ExtProcedureDict.Add TmpUseProcedure.Name, TmpUseProcedure.Code
                 End If
             End If
