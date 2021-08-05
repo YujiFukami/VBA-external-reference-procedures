@@ -9,6 +9,7 @@ Function Gaibu()
     Call frmExtRef.Show
     
 End Function
+
 Function フォーム用VBProject作成()
     
     Dim I%, J%, II%, K%, M%, N% '数え上げ用(Integer型)
@@ -60,6 +61,7 @@ Function フォーム用VBProject作成()
     フォーム用VBProject作成 = OutputVBProjectList
     
 End Function
+
 Function モジュールのプロシージャ名一覧取得(InputModule As VBComponent)
     
     Dim I&, J&, K&, M&, N& '数え上げ用(Long型)
@@ -85,6 +87,7 @@ Function モジュールのプロシージャ名一覧取得(InputModule As VBComponent)
     モジュールのプロシージャ名一覧取得 = Output
         
 End Function
+
 Function モジュールのコード一覧取得(InputModule As VBComponent)
     
     Dim I&, J&, K&, M&, N& '数え上げ用(Long型)
@@ -104,13 +107,16 @@ Function モジュールのコード一覧取得(InputModule As VBComponent)
             With InputModule.CodeModule
                 On Error Resume Next
                 TmpStart = 0
-                
+                TmpEnd = 0
                 TmpStart = .ProcBodyLine(TmpProcedureName, 0)
                 TmpEnd = .ProcCountLines(TmpProcedureName, 0)
                       
                 If TmpStart = 0 Then 'クラスモジュールのコード取得用
                     TmpStart = .ProcBodyLine(TmpProcedureName, vbext_pk_Get)
                     TmpEnd = .ProcCountLines(TmpProcedureName, vbext_pk_Let)
+                    If TmpEnd = 0 Then
+                        TmpEnd = .ProcCountLines(TmpProcedureName, vbext_pk_Get)
+                    End If
                 End If
                 
                 On Error GoTo 0
@@ -125,6 +131,7 @@ Function モジュールのコード一覧取得(InputModule As VBComponent)
     Set モジュールのコード一覧取得 = Output
 
 End Function
+
 Function コードを検索用に変更(InputCode) As Object
     
     Dim CodeList, TmpStr$
@@ -174,6 +181,7 @@ Function コードを検索用に変更(InputCode) As Object
     Set コードを検索用に変更 = Output
 
 End Function
+
 Function 全プロシージャ一覧作成(VBProjectList)
     
     Dim I&, J&, II&, K&, M&, N& '数え上げ用(Long型)
@@ -222,6 +230,7 @@ Function 全プロシージャ一覧作成(VBProjectList)
     全プロシージャ一覧作成 = Output
     
 End Function
+
 Sub プロシージャ内の使用プロシージャ取得(VBProjectList() As classVBProject, AllProcedureList)
     
     Dim I&, J&, II&, JJ&, III&, K&, M&, N& '数え上げ用(Long型)
@@ -319,6 +328,7 @@ Sub プロシージャ内の使用プロシージャ取得(VBProjectList() As classVBProject, AllP
     Next
 
 End Sub
+
 Function 外部参照プロシージャリスト作成(VBProjectList() As classVBProject)
     
     Dim I&, J&, II&, K&, M&, N& '数え上げ用(Long型)
@@ -354,6 +364,7 @@ Function 外部参照プロシージャリスト作成(VBProjectList() As classVBProject)
     外部参照プロシージャリスト作成 = Output
     
 End Function
+
 Sub プロシージャ内の外部参照プロシージャ取得(MyVBProjectName$, ClassProcedure As ClassProcedure, ExtProcedureDict As Object)
     
     Dim I&, J&, K&, M&, N& '数え上げ用(Long型)
@@ -390,3 +401,4 @@ Sub プロシージャ内の外部参照プロシージャ取得(MyVBProjectName$, ClassProcedure As
     End If
 
 End Sub
+
