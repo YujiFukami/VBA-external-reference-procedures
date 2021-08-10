@@ -3,10 +3,10 @@ Option Explicit
 '外部参照プロシージャの取得用モジュール
 'frmExtRefと連携している
 
-Function Gaibu()
+Function Kaiso()
     '外部参照プロシージャ一覧表示フォーム起動
-    Gaibu = "外部参照"
-    Call frmExtRef.Show
+    Kaiso = "階層表示"
+    Call frmKaiso.Show
     
 End Function
 
@@ -20,6 +20,7 @@ Function フォーム用VBProject作成()
     Dim VBProjectList As VBProjects, TmpVBProject As VBProject
     Dim TmpModule As VBComponent, TmpProcedureNameList, TmpCodeDict As Object
     Dim TmpProcedureName$
+    Dim Dummy
     
     Set VBProjectList = ActiveWorkbook.VBProject.VBE.VBProjects
     ReDim OutputVBProjectList(1 To VBProjectList.Count)
@@ -34,6 +35,7 @@ Function フォーム用VBProject作成()
             
             TmpClassModule.Name = TmpModule.Name
             TmpClassModule.VBProjectName = TmpClassVBProject.Name
+            TmpClassModule.ModuleType = モジュール種類判定(TmpModule.Type)
             
             TmpProcedureNameList = モジュールのプロシージャ名一覧取得(TmpModule)
             Set TmpCodeDict = モジュールのコード一覧取得(TmpModule)
@@ -43,6 +45,9 @@ Function フォーム用VBProject作成()
                     TmpProcedureName = TmpProcedureNameList(II)
                     TmpClassProcedure.Name = TmpProcedureName
                     TmpClassProcedure.Code = TmpCodeDict(TmpProcedureName)
+                    Dummy = コードからプロシージャのタイプと使用範囲取得(TmpClassProcedure.Code, TmpProcedureName)
+                    TmpClassProcedure.RangeOfUse = Dummy(1)
+                    TmpClassProcedure.ProcedureType = Dummy(2)
                     Set TmpClassProcedure.KensakuCode = コードを検索用に変更(TmpCodeDict(TmpProcedureName))
                     TmpClassProcedure.VBProjectName = TmpClassVBProject.Name
                     TmpClassProcedure.ModuleName = TmpClassModule.Name
@@ -59,6 +64,30 @@ Function フォーム用VBProject作成()
     Next I
     
     フォーム用VBProject作成 = OutputVBProjectList
+    
+End Function
+
+Private Function モジュール種類判定(ModuleType%)
+'http://officetanaka.net/excel/vba/vbe/04.htm
+
+    Dim Output$
+    Select Case ModuleType
+    Case 1
+        Output = "標準モジュール"
+    Case 2
+        Output = "クラスモジュール"
+    Case 3
+        Output = "ユーザーフォーム"
+    Case 11
+        Output = "ActiveX デザイナ"
+    Case 100
+        Output = "Document モジュール"
+    Case Else
+        MsgBox ("モジュール種類が判定できません")
+        Stop
+    End Select
+    
+    モジュール種類判定 = Output
     
 End Function
 
@@ -246,12 +275,13 @@ Sub プロシージャ内の使用プロシージャ取得(VBProjectList() As classVBProject, AllP
     Dim TmpSiyoProcedure As ClassProcedure
     Dim TmpSiyoProcedureList() As ClassProcedure
     Dim NaibuSansyoNaraTrue As Boolean
+    Dim TmpHantei As Boolean
     
-    For I = 1 To UBound(VBProjectList, 1)
+    For I = 1 To UBound(VBProjectList, 1) '各VBProjectにおいての
         Set TmpClassVBProject = VBProjectList(I)
-        For J = 1 To TmpClassVBProject.Modules.Count
+        For J = 1 To TmpClassVBProject.Modules.Count '各モジュールにおいての
             Set TmpClassModule = TmpClassVBProject.Modules(J)
-            For II = 1 To TmpClassModule.Procedures.Count
+            For II = 1 To TmpClassModule.Procedures.Count '各プロシージャにおいての
                 Set TmpClassProcedure = TmpClassModule.Procedures(II)
                 Set TmpKensakuCode = TmpClassProcedure.KensakuCode
                 K = 0
@@ -275,10 +305,25 @@ Sub プロシージャ内の使用プロシージャ取得(VBProjectList() As classVBProject, AllP
                             TmpProcedureNum = AllProcedureList(JJ, 6)
                             Set TmpSiyoProcedure = VBProjectList(TmpVBProjectNum).Modules(TmpModuleNum).Procedures(TmpProcedureNum)
                             
-                            TmpClassProcedure.AddUseProcedure TmpSiyoProcedure
-                            K = K + 1
-                            ReDim Preserve TmpSiyoProcedureList(1 To K)
-                            Set TmpSiyoProcedureList(K) = TmpSiyoProcedure
+                            TmpHantei = True
+                            If TmpSiyoProcedure.RangeOfUse = "Private" Then
+                                If TmpSiyoProcedure.ModuleName = TmpClassProcedure.ModuleName And _
+                                   TmpSiyoProcedure.VBProjectName = TmpClassProcedure.VBProjectName Then
+                                    '使用プロシージャがPrivateで同じモジュール、VBProject内にいる
+                                    TmpHantei = True
+                                Else
+                                    TmpHantei = False
+                                End If
+                            Else
+                                TmpHantei = True
+                            End If
+                            
+                            If TmpHantei = True Then
+'                                TmpClassProcedure.AddUseProcedure TmpSiyoProcedure
+                                K = K + 1
+                                ReDim Preserve TmpSiyoProcedureList(1 To K)
+                                Set TmpSiyoProcedureList(K) = TmpSiyoProcedure
+                            End If
                             
 '                            Debug.Assert TmpSiyoProcedure.Name <> "OutputText"
                             
@@ -329,7 +374,7 @@ Sub プロシージャ内の使用プロシージャ取得(VBProjectList() As classVBProject, AllP
 
 End Sub
 
-Function 外部参照プロシージャリスト作成(VBProjectList() As classVBProject)
+Function 外部参照プロシージャ連想配列作成(VBProjectList() As classVBProject)
     
     Dim I&, J&, II&, K&, M&, N& '数え上げ用(Long型)
     'プロシージャの個数を計算
@@ -353,7 +398,7 @@ Function 外部参照プロシージャリスト作成(VBProjectList() As classVBProject)
             Set TmpClassModule = TmpClassVBProject.Modules(J)
             For II = 1 To TmpClassModule.Procedures.Count
                 Set TmpClassProcedure = TmpClassModule.Procedures(II)
-                Call プロシージャ内の外部参照プロシージャ取得(TmpVBProjectName, TmpClassProcedure, TmpExtProcedureDict)
+                Call プロシージャ内の外部参照プロシージャ取得連想配列用(TmpVBProjectName, TmpClassProcedure, TmpExtProcedureDict)
             Next II
         Next J
         
@@ -361,11 +406,13 @@ Function 外部参照プロシージャリスト作成(VBProjectList() As classVBProject)
         
     Next I
         
-    外部参照プロシージャリスト作成 = Output
+    外部参照プロシージャ連想配列作成 = Output
     
 End Function
 
-Sub プロシージャ内の外部参照プロシージャ取得(MyVBProjectName$, ClassProcedure As ClassProcedure, ExtProcedureDict As Object)
+
+
+Sub プロシージャ内の外部参照プロシージャ取得連想配列用(VBProjectName$, ClassProcedure As ClassProcedure, ExtProcedureDict As Object)
     
     Dim I&, J&, K&, M&, N& '数え上げ用(Long型)
     Dim TmpUseProcedure As ClassProcedure
@@ -379,15 +426,15 @@ Sub プロシージャ内の外部参照プロシージャ取得(MyVBProjectName$, ClassProcedure As
             Set TmpUseProcedure = ClassProcedure.UseProcedure(I)
             
             '再帰(使用プロシージャ内の外部参照を探る)
-            Call プロシージャ内の外部参照プロシージャ取得(MyVBProjectName, TmpUseProcedure, ExtProcedureDict)
+            Call プロシージャ内の外部参照プロシージャ取得連想配列用(VBProjectName, TmpUseProcedure, ExtProcedureDict)
             
-            If TmpUseProcedure.VBProjectName <> MyVBProjectName Then 'VBProject名が異なれば外部参照
+            If TmpUseProcedure.VBProjectName <> VBProjectName Then 'VBProject名が異なれば外部参照
                 
                 '既に自分のVBProject内に同じ名前のプロシージャが存在すれば、外部参照でない
                 GaibuSansyoNaraTrue = True
                 For J = 1 To ClassProcedure.UseProcedure.Count
                     Set TmpUseProcedure2 = ClassProcedure.UseProcedure(J)
-                    If TmpUseProcedure2.MyVBProjectName = MyVBProjectName And TmpUseProcedure2.Name = TmpUseProcedure.Name Then
+                    If TmpUseProcedure2.VBProjectName = VBProjectName And TmpUseProcedure2.Name = TmpUseProcedure.Name Then
                         GaibuSansyoNaraTrue = False
                         Exit For
                     End If
@@ -402,3 +449,129 @@ Sub プロシージャ内の外部参照プロシージャ取得(MyVBProjectName$, ClassProcedure As
 
 End Sub
 
+Function 外部参照プロシージャリスト作成(VBProjectList() As classVBProject)
+    
+    Dim I&, J&, II&, K&, M&, N& '数え上げ用(Long型)
+    'プロシージャの個数を計算
+    Dim TmpClassVBProject As classVBProject
+    Dim TmpClassModule As classModule
+    Dim TmpClassProcedure As ClassProcedure
+    
+    Dim TmpVBProjectName$, TmpModuleName$, TmpProcedureName$
+    Dim TmpCode$
+    
+    Dim TmpVBProject
+    
+    Dim TmpExtProcedureList() As ClassProcedure
+    N = UBound(VBProjectList, 1)
+    ReDim Output(1 To N)
+    For I = 1 To N
+        ReDim TmpExtProcedureList(1 To 1)
+        TmpVBProjectName = VBProjectList(I).Name
+        Set TmpClassVBProject = VBProjectList(I)
+        For J = 1 To TmpClassVBProject.Modules.Count
+            Set TmpClassModule = TmpClassVBProject.Modules(J)
+            For II = 1 To TmpClassModule.Procedures.Count
+                Set TmpClassProcedure = TmpClassModule.Procedures(II)
+                Call プロシージャ内の外部参照プロシージャ取得(TmpVBProjectName, TmpClassProcedure, TmpExtProcedureList)
+            Next II
+        Next J
+        
+        Output(I) = TmpExtProcedureList
+    Next I
+        
+    外部参照プロシージャリスト作成 = Output
+    
+End Function
+
+Sub プロシージャ内の外部参照プロシージャ取得(VBProjectName$, ClassProcedure As ClassProcedure, ExtProcedureList() As ClassProcedure)
+    
+    Dim I&, J&, K&, M&, N& '数え上げ用(Long型)
+    Dim TmpUseProcedure As ClassProcedure
+    Dim TmpUseProcedure2 As ClassProcedure
+    Dim GaibuSansyoNaraTrue As Boolean
+    Dim TmpHantei As Boolean
+    
+    If ClassProcedure.UseProcedure.Count = 0 Then
+        '使用しているプロシージャ無しの場合何もしない
+    Else
+        For I = 1 To ClassProcedure.UseProcedure.Count
+            Set TmpUseProcedure = ClassProcedure.UseProcedure(I)
+            
+            '再帰(使用プロシージャ内の外部参照を探る)
+            Call プロシージャ内の外部参照プロシージャ取得(VBProjectName, TmpUseProcedure, ExtProcedureList)
+            
+            If TmpUseProcedure.VBProjectName <> VBProjectName Then 'VBProject名が異なれば外部参照
+                
+                '既に自分のVBProject内に同じ名前のプロシージャが存在すれば、外部参照でない
+                GaibuSansyoNaraTrue = True
+                For J = 1 To ClassProcedure.UseProcedure.Count
+                    Set TmpUseProcedure2 = ClassProcedure.UseProcedure(J)
+                    If TmpUseProcedure2.VBProjectName = VBProjectName And TmpUseProcedure2.Name = TmpUseProcedure.Name Then
+                        GaibuSansyoNaraTrue = False
+                        Exit For
+                    End If
+                Next J
+                
+                TmpHantei = False
+                
+                If Not ExtProcedureList(1) Is Nothing Then
+                    For J = 1 To UBound(ExtProcedureList, 1)
+                        If ExtProcedureList(J).Name = TmpUseProcedure.Name Then
+                            '既に取得済み
+                            TmpHantei = True
+                            Exit For
+                        End If
+                    Next J
+                End If
+                
+                If GaibuSansyoNaraTrue = True And TmpHantei = False Then
+                
+                    If Not ExtProcedureList(1) Is Nothing Then
+                        ReDim Preserve ExtProcedureList(1 To UBound(ExtProcedureList, 1) + 1)
+                    End If
+                    
+                    Set ExtProcedureList(UBound(ExtProcedureList, 1)) = TmpUseProcedure
+                End If
+            End If
+        Next I
+    End If
+
+End Sub
+
+Private Function コードからプロシージャのタイプと使用範囲取得(InputCode, ProcedureName$)
+    
+    Dim HeadStr$
+    HeadStr = Split(InputCode, ProcedureName)(0)
+    
+    Dim ProcedureType$, RangeOfUse$
+    If InStr(1, HeadStr, "Sub") > 0 Then
+        ProcedureType = "Sub"
+    ElseIf InStr(1, HeadStr, "Function") > 0 Then
+        ProcedureType = "Function"
+    ElseIf InStr(1, HeadStr, "Property Get") > 0 Then
+        ProcedureType = "Property Get"
+    ElseIf InStr(1, HeadStr, "Property Let") > 0 Then
+        ProcedureType = "Property Let"
+    ElseIf InStr(1, HeadStr, "Property Set") > 0 Then
+        ProcedureType = "Property Set"
+    Else
+        MsgBox ("プロシージャのタイプが判定できません")
+        Stop
+    End If
+    
+    If InStr(1, HeadStr, "Public") > 0 Then
+        RangeOfUse = "Public"
+    ElseIf InStr(1, HeadStr, "Private") > 0 Then
+        RangeOfUse = "Private"
+    Else
+        RangeOfUse = "Public"
+    End If
+        
+    Dim Output(1 To 2)
+    Output(1) = RangeOfUse
+    Output(2) = ProcedureType
+    
+    コードからプロシージャのタイプと使用範囲取得 = Output
+
+End Function

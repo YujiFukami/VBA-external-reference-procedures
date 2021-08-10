@@ -27,7 +27,7 @@ Private Sub listVBProject_Click()
     Dim TmpExtProcedureDict As Object, TmpExtProcedureList
     
     For I = 1 To UBound(PbVBProjectNameList, 1)
-        Select Case listVBProject.List(listVBProject.ListIndex)
+        Select Case ListVBProject.List(ListVBProject.ListIndex)
         Case PbVBProjectNameList(I)
             '選択したVBProjectで外部参照しているプロシージャを表示
             Set PbTmpExtProcedureDict = PbExtProcedureList(I)
@@ -70,9 +70,9 @@ Private Sub UserForm_Initialize()
     Dim AllProcedureList
     AllProcedureList = 全プロシージャ一覧作成(VBProjectList)
     Call プロシージャ内の使用プロシージャ取得(VBProjectList, AllProcedureList)
-    
+        
     Dim ExtProcedureList
-    ExtProcedureList = 外部参照プロシージャリスト作成(VBProjectList)
+    ExtProcedureList = 外部参照プロシージャ連想配列作成(VBProjectList)
     
     'フォーム用パブリック変数設定
     Dim I%, J%, K%, M%, N% '数え上げ用(Integer型)
@@ -85,6 +85,6 @@ Private Sub UserForm_Initialize()
     PbExtProcedureList = ExtProcedureList
         
     'フォーム設定
-    Me.listVBProject.List = PbVBProjectNameList
+    Me.ListVBProject.List = PbVBProjectNameList
         
 End Sub
